@@ -14,7 +14,7 @@ class Submission
     @@submissions ||= []
     @@submissions << "#{id}-#{address}"
     # record submission
-    @@logger.queue_message "submit,#{target},#{address},#{id}"
+    @@logger.queue_message "submit,#{@@target},#{address},#{id}"
   end
 
   def self.pending
@@ -26,7 +26,7 @@ class Submission
     # mark submission as completed or not
     @@submissions.delete(id)
     orig_id, address = id.split '-'
-    @@logger.queue_message "result,#{target},#{address},#{orig_id},#{valid}"
+    @@logger.queue_message "result,#{@@target},#{Time.now.utc.to_i},#{address},#{orig_id},#{valid}"
   end
 
   def self.set_target(target)
@@ -62,7 +62,7 @@ Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
       response += "\n"
     end
 
-    response.tap {|x| puts x}
+    response
   end
 
   # modify / process response stream
@@ -78,8 +78,17 @@ Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
       end
     end
 
+    if raw =~ /set_difficulty/
+      raw.split("\n").each do |r|
+        if r =~ /set_difficulty/
+          data = JSON.parse(r, :quirks_mode => true)
+          Submission.set_target(data['params'][0])
+        end
+      end
+    end
+
     # if we found a submission or we have a difficulty adjustment
-    if has_submission or raw =~ /set_difficulty/
+    if has_submission
       # response can contain multiple json objects, split on \n
       response = ''
       responses = raw.split "\n"
@@ -89,10 +98,7 @@ Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
         found_submission = false
 
         # if the response is a difficulty request, record it
-        if r =~ /set_difficulty/
-          data = JSON.parse(r, :quirks_mode => true)
-          Submission.set_target(data['params'][0])
-        elsif has_submission and r =~ /result/
+        if r =~ /result/
           data = JSON.parse(r, :quirks_mode => true)
           if Submission.pending.include?(data['id'])
             # remove the share from the list and record the result
@@ -114,7 +120,6 @@ Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
         response += "\n"
       end
     end
-    p [raw, response] if raw =~ /result/
     response
   end
 
