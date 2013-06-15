@@ -92,8 +92,12 @@ Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
     if raw =~ /set_difficulty/
       raw.split("\n").each do |r|
         if r =~ /set_difficulty/
-          data = JSON.parse(r, :quirks_mode => true)
-          Submission.set_target(data['params'][0])
+          begin
+            data = JSON.parse(r, :quirks_mode => true)
+            Submission.set_target(data['params'][0])
+          rescue
+            puts "parse_error,#{r}"
+          end
         end
       end
     end
