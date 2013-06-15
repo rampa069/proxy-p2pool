@@ -35,7 +35,7 @@ class Submission
 end
 
 Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
-  conn.server :srv, :host => "yrral86.dyndns.org", :port => 9332
+  conn.server :srv, :host => "p2pool.address", :port => 9332
 
   # modify / process request stream
   conn.on_data do |raw|
