@@ -51,7 +51,7 @@ Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
           puts "parse_error,#{r}"
           response += r
         else
-          if data["method"] = 'mining.submit'
+          if data["method"] == 'mining.submit'
             # if we have a submission, move address to id in the format <id>-<address>
             address = data["params"][0]
             id = data["id"]
@@ -62,7 +62,7 @@ Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
             Submission.new(address, id)
             # add modified response as json string
             response += JSON.dump(data)
-          elsif data["method"] = 'mining.authorize'
+          elsif data["method"] == 'mining.authorize'
             data["params"][0] = POOL_ADDRESS
             response += JSON.dump(data)
           end
