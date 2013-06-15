@@ -35,7 +35,7 @@ class Submission
 end
 
 Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
-  conn.server :srv, :host => "127.0.0.1", :port => 9332
+  conn.server :srv, :host => "yrral86.dyndns.org", :port => 9332
 
   # modify / process request stream
   conn.on_data do |raw|
@@ -44,18 +44,29 @@ Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
     responses = raw.split "\n"
 
     responses.each do |r|
-      if r =~ /mining.submit/
-        data = JSON.parse r, :quirks_mode => true
-        # if we have a submission, move address to id in the format <id>-<address>
-        address = data["params"][0]
-        id = data["id"]
-        data['id'] = "#{id}-#{address}"
-        # add our address
-        data["params"][0] = POOL_ADDRESS
-        # add submission to pending
-        Submission.new(address, id)
-        # add modified response as json string
-        response += JSON.dump(data)
+      if r =~ /mining.submit/ or r =~ /mining.authorize/
+        begin
+          data = JSON.parse r, :quirks_mode => true
+        rescue
+          puts "parse_error,#{r}"
+          response += r
+        else
+          if data["method"] = 'mining.submit'
+            # if we have a submission, move address to id in the format <id>-<address>
+            address = data["params"][0]
+            id = data["id"]
+            data['id'] = "#{id}-#{address}"
+            # add our address
+            data["params"][0] = POOL_ADDRESS
+            # add submission to pending
+            Submission.new(address, id)
+            # add modified response as json string
+            response += JSON.dump(data)
+          elsif data["method"] = 'mining.authorize'
+            data["params"][0] = POOL_ADDRESS
+            response += JSON.dump(data)
+          end
+        end
       else
         response += r
       end
@@ -99,16 +110,21 @@ Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
 
         # if the response is a difficulty request, record it
         if r =~ /result/
-          data = JSON.parse(r, :quirks_mode => true)
-          if Submission.pending.include?(data['id'])
-            # remove the share from the list and record the result
-            Submission.finalize(data['id'], data['result'])
-            id, address = data['id'].split '-'
-            # restore original id
-            data['id'] = id
-            # dump data back to string
-            response += JSON.dump(data)
-            found_submission = true
+          begin
+            data = JSON.parse(r, :quirks_mode => true)
+          rescue
+            puts "parse_error,#{r}"
+          else
+            if Submission.pending.include?(data['id'])
+              # remove the share from the list and record the result
+              Submission.finalize(data['id'], data['result'])
+              id, address = data['id'].split '-'
+              # restore original id
+              data['id'] = id
+              # dump data back to string
+              response += JSON.dump(data)
+              found_submission = true
+            end
           end
         end
         
