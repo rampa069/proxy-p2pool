@@ -5,7 +5,7 @@ $:.unshift '.'
 
 require 'share_logger'
 
-POOL_ADDRESS = "1B1kSM3KfcP9BvGDC1G3cxZAV9LbxovpQi"
+POOL_ADDRESS = "Lbju6RUa5kUpqCZ6UErLwjHQFT7MywnFoZ"
 
 class Submission
   def initialize(address, id)
@@ -34,8 +34,8 @@ class Submission
   end
 end
 
-Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
-  conn.server :srv, :host => "p2pool.address", :port => 9332
+Proxy.start(:host => "0.0.0.0", :port => 9999) do |conn|
+  conn.server :srv, :host => "localhost", :port => 3333
 
   # modify / process request stream
   conn.on_data do |raw|
@@ -65,6 +65,7 @@ Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
           elsif data["method"] == 'mining.authorize'
             data["params"][0] = POOL_ADDRESS
             response += JSON.dump(data)
+            puts (JSON.dump(data))
           end
         end
       else
@@ -90,13 +91,17 @@ Proxy.start(:host => "0.0.0.0", :port => 9339) do |conn|
     end
 
     if raw =~ /set_difficulty/
+      #puts(raw)
       raw.split("\n").each do |r|
+      #raw.each do |r|
         if r =~ /set_difficulty/
           begin
             data = JSON.parse(r, :quirks_mode => true)
             Submission.set_target(data['params'][0])
+            puts(data)
           rescue
             puts "parse_error,#{r}"
+           
           end
         end
       end
