@@ -34,8 +34,8 @@ class Submission
   end
 end
 
-Proxy.start(:host => "0.0.0.0", :port => 9999) do |conn|
-  conn.server :srv, :host => "localhost", :port => 3333
+Proxy.start(:host => "0.0.0.0", :port => 3333) do |conn|
+  conn.server :srv, :host => "dev.manicminer.in", :port => 3333
 
   # modify / process request stream
   conn.on_data do |raw|
@@ -65,7 +65,7 @@ Proxy.start(:host => "0.0.0.0", :port => 9999) do |conn|
           elsif data["method"] == 'mining.authorize'
             data["params"][0] = POOL_ADDRESS
             response += JSON.dump(data)
-            puts (JSON.dump(data))
+            #puts (JSON.dump(data))
           end
         end
       else
@@ -98,7 +98,7 @@ Proxy.start(:host => "0.0.0.0", :port => 9999) do |conn|
           begin
             data = JSON.parse(r, :quirks_mode => true)
             Submission.set_target(data['params'][0])
-            puts(data)
+            #puts(data)
           rescue
             puts "parse_error,#{r}"
            
