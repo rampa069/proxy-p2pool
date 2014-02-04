@@ -1,5 +1,7 @@
 require 'json'
 require 'em-proxy'
+require "net/http"
+require "uri"
 
 $:.unshift '.'
 
@@ -14,7 +16,7 @@ class Submission
     @@submissions ||= []
     @@submissions << "#{id}-#{address}"
     # record submission
-    @@logger.queue_message "submit,#{@@target},#{address},#{id}"
+    @@logger.queue_message "/api/submit/#{@@target}/#{address}/#{id}"
   end
 
   def self.pending
@@ -26,7 +28,7 @@ class Submission
     # mark submission as completed or not
     @@submissions.delete(id)
     orig_id, address = id.split '-'
-    @@logger.queue_message "result,#{@@target},#{Time.now.utc.to_i},#{address},#{orig_id},#{valid}"
+    @@logger.queue_message "/api/result/#{@@target}/#{Time.now.utc.to_i}/#{address}/#{orig_id}/#{valid}"
   end
 
   def self.set_target(target)
@@ -34,7 +36,7 @@ class Submission
   end
 end
 
-Proxy.start(:host => "0.0.0.0", :port => 3333) do |conn|
+Proxy.start(:host => "0.0.0.0", :port => 9999) do |conn|
   conn.server :srv, :host => "dev.manicminer.in", :port => 3333
 
   # modify / process request stream
@@ -63,7 +65,35 @@ Proxy.start(:host => "0.0.0.0", :port => 3333) do |conn|
             # add modified response as json string
             response += JSON.dump(data)
           elsif data["method"] == 'mining.authorize'
-            data["params"][0] = POOL_ADDRESS
+            authWorker=data["params"][0].gsub(".","/")
+            
+            begin
+            	authResponse = Net::HTTP.get_response("dev.manicminer.in","/api/check/worker/#{authWorker}.json")
+            	
+            rescue Timeout::Error, Errno::EINVAL, Errno::ECONNRESET, EOFError,
+                   Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError => e
+                   
+            	   puts "Error en workername"
+            end
+                     
+               begin   
+              	 authBody= JSON.parse authResponse.body
+               rescue Exception => e
+                 puts "Error en worker"
+                 authBody = '{"OK = false }'
+               end
+            
+            #puts authBody
+            
+            if (authBody["ok"] == true)
+            begin
+            	data["params"][0] = authWorker.gsub("/",".")
+            	#puts "Login OK"
+            end
+            else
+            	response = "ERROR"
+            end            	
+            
             response += JSON.dump(data)
             #puts (JSON.dump(data))
           end

@@ -4,7 +4,6 @@ module ShareLogger
     @@lock = Mutex.new
     @@messages ||= []
     @@thread = Thread.new do
-      open("shares.log", "a") do |l|
         while @@run
           temp = nil
           @@lock.synchronize do
@@ -13,9 +12,18 @@ module ShareLogger
           end
           l.puts(temp.join("\n")) unless temp.empty?
           l.flush
+
+          begin
+            authResponse = Net::HTTP.get_response("dev.manicminer.in",temp)
+                                       
+          rescue Timeout::Error, Errno::EINVAL, Errno::ECONNRESET, EOFError,
+                 Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError => e
+                                                                                      
+                 puts "Enviando share"
+          end
+                                                                                                                           
           sleep 5
         end
-      end
     end
     self
   end
