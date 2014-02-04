@@ -10,18 +10,20 @@ module ShareLogger
             temp = @@messages
             @@messages = []
           end
-          l.puts(temp.join("\n")) unless temp.empty?
-          l.flush
-
-          begin
-            authResponse = Net::HTTP.get_response("dev.manicminer.in",temp)
+          
+          #puts "Entrando en Thread Enviando share #{temp}"
+          temp.each do |share|
+          	#puts "Thread Enviando share #{share}"
+          
+          	begin
+            		authResponse = Net::HTTP.get_response("dev.manicminer.in",share)
                                        
-          rescue Timeout::Error, Errno::EINVAL, Errno::ECONNRESET, EOFError,
-                 Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError => e
+          	rescue Timeout::Error, Errno::EINVAL, Errno::ECONNRESET, EOFError,
+                 	Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError => e
                                                                                       
-                 puts "Enviando share"
-          end
-                                                                                                                           
+                 	puts "Error Enviando share #{share}"
+          	end
+          end                                                                                                                 
           sleep 5
         end
     end

@@ -8,15 +8,18 @@ $:.unshift '.'
 require 'share_logger'
 
 POOL_ADDRESS = "Lbju6RUa5kUpqCZ6UErLwjHQFT7MywnFoZ"
+@@coinSymbol="LTC"
 
 class Submission
   def initialize(address, id)
     @@target ||= 1
     @@logger ||= ShareLogger.start
     @@submissions ||= []
+    worker=address.gsub(".","/")
     @@submissions << "#{id}-#{address}"
+    
     # record submission
-    @@logger.queue_message "/api/submit/#{@@target}/#{address}/#{id}"
+    @@logger.queue_message "/api/submit/#{@@target}/#{worker}/#{@@coinSymbol}/#{id}.json"
   end
 
   def self.pending
@@ -28,7 +31,8 @@ class Submission
     # mark submission as completed or not
     @@submissions.delete(id)
     orig_id, address = id.split '-'
-    @@logger.queue_message "/api/result/#{@@target}/#{Time.now.utc.to_i}/#{address}/#{orig_id}/#{valid}"
+    worker=address.gsub(".","/")
+    @@logger.queue_message "/api/result/#{@@target}/#{Time.now.utc.to_i}/#{worker}/#{@@coinSymbol}/#{orig_id}/#{valid}.json"
   end
 
   def self.set_target(target)
@@ -36,8 +40,8 @@ class Submission
   end
 end
 
-Proxy.start(:host => "0.0.0.0", :port => 9999) do |conn|
-  conn.server :srv, :host => "dev.manicminer.in", :port => 3333
+Proxy.start(:host => "0.0.0.0", :port => 3333) do |conn|
+  conn.server :srv, :host => "127.0.0.1", :port => 16001
 
   # modify / process request stream
   conn.on_data do |raw|
